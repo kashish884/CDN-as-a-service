@@ -1,0 +1,103 @@
+---
+  # vars passed from parent playbook will be:
+  #   container_name: cont1
+  #   bridge_name: "subnet_bridge"
+
+
+  # Set interface prefix
+  - name: Veth Pair Interface prefix
+    set_fact:
+      interface_prefix: "{{container_name}}"
+
+  # Create veth pair for bridge and container
+  - name: Create veth pair for bridge and container
+    command: "ip link add {{interface_prefix}}vif1 type veth peer name {{interface_prefix}}vif2"
+    ignore_errors: true
+
+  # Attach brvif2 to bridge
+  - name: Attach vif2 to bridge
+    command: "brctl addif {{bridge_name}} {{interface_prefix}}vif2"
+    become: yes
+    ignore_errors: true
+
+  # Make the brvif2 up
+  - name: Make the vif2 up
+    command: "ifconfig {{interface_prefix}}vif2 up"
+    become: yes
+
+  # Fetch container process ID
+  - name: Fetch container process ID
+    command: "docker inspect --format {%raw%}'{{.State.Pid}}'{%endraw%} {{container_name}}"
+    register: container_pid
+
+  # Attach vif1 to container
+  - name: Attach vif1 to container
+    command: "ip link set netns {{container_pid.stdout}} dev {{interface_prefix}}vif1"
+    become: yes
+    ignore_errors: true
+
+  # Make the container interface running 
+  - name: Make the interface running 
+    command: "nsenter -t {{container_pid.stdout}} -n ip link set {{interface_prefix}}vif1 up"
+    become: yes
+
+  # Assign ip to LC1 container interface
+  - name: Run dhclient
+    command: "nsenter -t {{container_pid.stdout}} -n dhclient {{interface_prefix}}vif1"
+    become: yes
+    ignore_errors: true
+
+  # Change Resolve.conf file
+  - name: Get the ip address assigned to DNS container
+    #command: "docker inspect -f {%raw%}'{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'{%endraw%} {{container_name}}"
+    shell: "docker inspect -f {%raw%}'{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'{%endraw%} {{container_name}} >> /home/ece792/Container/{{container_name}}mgnt.txt"
+    become: yes
+    register: container_ip
+
+  - debug:
+      msg: "Container IP: {{container_ip.stdout}}"
+
+  - debug:
+      msg: "docker exec -i {{ container_name }} /sbin/ifconfig {{container_name}}vif1 | grep 'inet' | cut -d: -f2 | awk '{print $2}'"
+
+  - name: Get the ip address assigned to DNS container
+    shell: "docker exec -i {{ container_name }} /sbin/ifconfig {{container_name}}vif1 | grep 'inet' | cut -d: -f2 | awk '{print $2}' >> /home/ece792/Container/{{container_name}}.txt"
+    become: yes
+    register: container_subnetip
+
+  # - debug:
+  #    msg: "Full MSG: {{container_subnetip}}"
+
+  - debug:
+      msg: "Container Subnet IP: {{container_subnetip.stdout}}"
+
+      #  - name: Add A record in subnet dns
+      # lineinfile:
+      #  path: /srv/docker/{{subnet_dns}}/var/forward{{subnet_zone_name}}
+      #  line: "{{endpoint_name}}   IN  A  {{container_subnetip.stdout}}"
+      # become: true
+
+      #   - name: Restart the named of subnet dns
+      # command: "docker exec -itd {{subnet_dns}} /usr/sbin/named -4 -u named -c /named/etc/named.conf"
+      # become: yes
+
+      # - name: Remove default route
+      #  shell: "docker exec -i {{ container_name }} ip route del default"
+      # become: yes
+
+      #  - name: debug
+      # set_fact:
+      # container_ip: "{{container_subnetip.stdout}}"
+
+      # - name: Extract gateway ip
+      # set_fact:
+      #  gateway_ip: "{{container_ip.split('.')[0]}}.{{container_ip.split('.')[1]}}.{{container_ip.split('.')[2]}}.1"
+
+      #  - name: Debug gateway ip
+      # debug:
+      # msg: "{{gateway_ip}}"
+
+      # - name: Add default route for subnet
+      # shell: "docker exec -i {{ container_name }} ip route add 0.0.0.0/0 via {{ gateway_ip }} dev {{ container_name }}vif1"
+      # become: yes
+

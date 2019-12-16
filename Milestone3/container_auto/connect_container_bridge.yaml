@@ -1,0 +1,66 @@
+---
+  # vars passed from parent playbook will be:
+  #   container_name: cont1
+  #   bridge_name: "subnet_bridge"
+
+
+  # Set interface prefix
+  - name: Veth Pair Interface prefix
+    set_fact:
+      interface_prefix: "{{container_name}}"
+
+  # Create veth pair for bridge and container
+  - name: Create veth pair for bridge and container
+    command: "ip link add {{interface_prefix}}vif1 type veth peer name {{interface_prefix}}vif2"
+    ignore_errors: true
+
+  # Attach brvif2 to bridge
+  - name: Attach vif2 to bridge
+    command: "brctl addif {{bridge_name}} {{interface_prefix}}vif2"
+    become: yes
+    ignore_errors: true
+
+  # Make the brvif2 up
+  - name: Make the vif2 up
+    command: "ifconfig {{interface_prefix}}vif2 up"
+    become: yes
+
+  # Fetch container process ID
+  - name: Fetch container process ID
+    command: "docker inspect --format {%raw%}'{{.State.Pid}}'{%endraw%} {{container_name}}"
+    register: container_pid
+
+  # Attach vif1 to container
+  - name: Attach vif1 to container
+    command: "ip link set netns {{container_pid.stdout}} dev {{interface_prefix}}vif1"
+    become: yes
+    ignore_errors: true
+
+  # Make the container interface running 
+  - name: Make the interface running 
+    command: "nsenter -t {{container_pid.stdout}} -n ip link set {{interface_prefix}}vif1 up"
+    become: yes
+
+  # Assign ip to LC1 container interface
+  - name: Run dhclient
+    command: "nsenter -t {{container_pid.stdout}} -n dhclient {{interface_prefix}}vif1"
+    become: yes
+    ignore_errors: true
+
+  # Change Resolve.conf file
+  - name: Get the ip address assigned to DNS container
+    command: "docker inspect -f {%raw%}'{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'{%endraw%} {{container_name}}"
+    become: yes
+    register: container_ip
+
+  - debug:
+      msg: "Container IP: {{container_ip.stdout}}"
+
+  - name: Get the ip address assigned to DNS container
+    shell: "docker exec -i {{ container_name }} /sbin/ifconfig {{container_name}}vif1 | grep 'inet' | cut -d: -f2 | awk '{print $2}'"
+    become: yes
+    register: container_subnetip
+
+  - debug:
+      msg: "Container Subnet IP: {{container_subnetip.stdout}}"
+

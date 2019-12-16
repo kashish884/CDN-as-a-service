@@ -1,0 +1,69 @@
+---
+- hosts: localhost
+  gather_facts: no
+  vars:
+    docker_filepath: /etc/ansible/cplayb/docker_im
+    packages:
+       - docker
+  vars_files:
+    - instance_vars.yml
+
+  tasks:
+    - debug:
+         msg: "{{servers}}"
+ 
+  # Install required packages
+    - name: Install required packages for docker
+      apt: 
+        name: "{{packages}}"
+      become: yes
+
+   # Create docker image if not exists
+    - name: Create docker image if not exists
+      docker_image:
+        path: "{{docker_filepath}}/{{servers[item].os_type}}"
+        name: "my{{servers[item].os_type}}"
+        state: present
+      with_items: "{{ servers | list }}"
+
+      # - name: Get the ip address of VPC DNS server
+      # shell: "docker exec -i {{ servers[item].vpc_dns }} /sbin/ifconfig {{servers[item].vpc_dns}}vif1 | grep 'inet' | cut -d: -f2 | awk '{print $2}'"
+      #  become: yes
+      # with_items: "{{ servers | list }}"
+      # register: container_subnetip
+
+    # Create container for dns
+    - name: Create and start container for client server if already not present
+      docker_container:
+        name: "{{servers[item].server_name}}"
+        image: "my{{servers[item].os_type}}"
+        state: started
+        privileged: yes
+        interactive: yes
+        tty: yes
+        detach: yes
+        #   dns_servers:
+        #   - "{{container_subnetip.results[0].stdout}}"
+      with_items: "{{ servers | list }}"
+    
+    # Connect Container with bridge
+    - name: Connect Container with bridge
+      include_tasks: server_instance_config.yml
+      vars:
+        container_name: "{{servers[item].server_name}}"
+        bridge_name: "{{servers[item].subnet_name}}"
+        #  subnet_dns: "{{servers[item].subnet_dns}}"
+        # subnet_zone_name: "{{servers[item].subnet_zone_name}}"
+        # endpoint_name: "{{servers[item].endpoint_name}}"
+      with_items: "{{ servers | list }}"
+
+
+    # Write to database or run this script seperately from shell
+    #   - name: Writing this newly created server instance to DB
+    #  include_tasks: write_vm_db.yml
+    #  vars:
+    #    vms: "{{servers}}"
+    #  become: yes
+    
+
+    

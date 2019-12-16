@@ -1,0 +1,8 @@
+---
+subnets:
+  t10:
+    subnet_name: T10sub
+    vpc_name: T10
+    subnet_range: 120.0.0.0/24
+    vpc_gateway: 120.0.0.1/24
+    dhcp_range: 120.0.0.2,120.0.0.250,12h 

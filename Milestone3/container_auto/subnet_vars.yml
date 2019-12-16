@@ -1,0 +1,8 @@
+---
+subnets:
+  t7: # Tenant name
+    subnet_name: t7_test
+    vpc_name: t7vpc
+    subnet_range: 38.0.0.0/24
+    vpc_gateway: 38.0.0.1/24
+    dhcp_range: 38.0.0.2,38.0.0.250,12h 

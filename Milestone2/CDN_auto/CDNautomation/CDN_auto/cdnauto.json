@@ -1,0 +1,10 @@
+{
+
+	"cdnauto": "yes",
+	"datareplication": "yes",
+	"data hierarchy": "yes",
+	"delivery node replication": "yes",
+	"accounting": "yes",
+	"high availability": "yes",
+	"self healing": "yes"
+}

@@ -1,0 +1,7 @@
+---
+vpcs:
+  t7:   # Tenant Name
+    vpc_name: t7vpc
+    vpc_gateway: 104.0.0.2/24
+    provider_gateway: 104.0.0.1/24
+    provider_gateway_ip: 104.0.0.1

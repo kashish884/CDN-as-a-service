@@ -1,0 +1,11 @@
+---
+vms:
+  t10:
+    vm_name: Client1
+    subnet_name: T10sub
+    vpc_name: T10
+    os_type: centos7_minimal
+    memory: 524 # in MBits
+    disk: 12G
+    vcpus: 2
+    controller_network: default

@@ -1,0 +1,7 @@
+---
+vpcs:
+  t10:
+    vpc_name: T10
+    vpc_gateway: 120.0.0.2/24
+    provider_gateway: 120.0.0.1/24
+    provider_gateway_ip: 120.0.0.1

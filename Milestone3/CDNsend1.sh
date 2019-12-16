@@ -1,0 +1,10 @@
+file=/home/ece792/Container/Recvmgnt.txt
+ip=$(cat "$file")
+#sudo sshpass -p root scp -o StrictHostKeyChecking=no CDNclient1.sh root@$ip:~
+#sudo sshpass -p root scp -o StrictHostKeyChecking=no CDNclient2.sh root@$ip:~
+#sudo sshpass -p root scp -o StrictHostKeyChecking=no CDNclient3.sh root@$ip:~
+#sudo sshpass -p root scp -o StrictHostKeyChecking=no CDNclient4.sh root@$ip:~
+#sudo sshpass -p root scp -o StrictHostKeyChecking=no CDNclient5.sh root@$ip:~
+sudo sshpass -p root scp -o StrictHostKeyChecking=no SN.txt root@$ip:~
+sudo sshpass -p root scp -o StrictHostKeyChecking=no DN1.txt root@$ip:~
+sudo sshpass -p root scp -o StrictHostKeyChecking=no DN2.txt root@$ip:~

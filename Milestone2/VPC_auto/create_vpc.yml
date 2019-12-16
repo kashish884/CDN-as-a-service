@@ -1,0 +1,62 @@
+---
+- hosts: localhost
+  gather_facts: yes
+  vars:
+    vm_disk_location: /var/lib/libvirt/images/client.img
+    root_pass: EcE792net!
+    provider_namespace: nstransit
+  vars_files: 
+    - vpc_vars.yml
+
+  tasks:
+    - debug:
+         msg: "{{vpcs}}"
+    
+    - name: creating network namespace
+      command: "sudo ip netns add {{vpcs[item].vpc_name}}_ns"
+      with_items: "{{ vpcs | list }}"
+      ignore_errors: true
+      become: yes
+
+    
+    # Create veth pair
+    - name: Create veth pair
+      command: "ip link add {{vpcs[item].vpc_name}}vif1 type veth peer name {{vpcs[item].vpc_name}}vif2"
+      with_items: "{{ vpcs | list }}"
+      ignore_errors: true
+      become: yes
+
+    # Add vethpair interface to namespace
+    - name: Add vethpair interface to namespace
+      command: "sudo ip link set {{vpcs[item].vpc_name}}vif1 netns {{vpcs[item].vpc_name}}_ns"
+      with_items: "{{ vpcs | list }}"
+      ignore_errors: true
+      become: yes
+
+    # Attach another veth pair interface to provider_ns bridge
+    - name: Add vethpair interface to provider_namespace
+      command: "sudo ip link set {{vpcs[item].vpc_name}}vif2 netns {{provider_namespace}}"
+      with_items: "{{ vpcs | list }}"
+      ignore_errors: true
+      become: yes
+
+    # Assign ip to vethpair interface inside vpc namespace
+    - name: Add vethpair interface to namespace
+      command: "sudo ip netns exec {{vpcs[item].vpc_name}}_ns ifconfig {{vpcs[item].vpc_name}}vif1 {{vpcs[item].vpc_gateway}} up"
+      with_items: "{{ vpcs | list }}"
+      ignore_errors: true
+      become: yes
+
+    # Assign ip to vethpair interface inside provider namespace
+    - name: Add vethpair interface to namespace
+      command: "sudo ip netns exec {{provider_namespace}} ifconfig {{vpcs[item].vpc_name}}vif2 {{vpcs[item].provider_gateway}} up"
+      with_items: "{{ vpcs | list }}"
+      ignore_errors: true
+      become: yes
+
+    # Add default route to be of provider_ns
+    - name: Add default route to be of provider_ns
+      command: "sudo ip netns exec {{vpcs[item].vpc_name}}_ns ip route add 0.0.0.0/0 via {{vpcs[item].provider_gateway_ip}} dev {{vpcs[item].vpc_name}}vif1"
+      with_items: "{{ vpcs | list }}"
+      ignore_errors: true
+      become: yes

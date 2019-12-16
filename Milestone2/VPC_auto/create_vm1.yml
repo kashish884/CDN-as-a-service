@@ -1,0 +1,53 @@
+---
+- hosts: localhost
+  gather_facts: no
+  vars:
+    vm_disk_location: /var/lib/libvirt/images/
+    centos_image_location: /var/lib/libvirt/images/client.img
+    root_pass: root
+  vars_files:
+    - vm_vars.yml
+
+  tasks:
+    - debug:
+         msg: "{{vms}}"
+    
+    # Get List of VM Disks
+    - name: Get list of VM disks
+      command: "ls {{ vm_disk_location }}"
+      register: disks
+      changed_when: "disks.rc != 0"
+      become: yes
+  
+    #Copy VM Disk Image for CentOS
+    - name: Copy VM Disk Image for CentOS 7 Minimal
+      copy:
+        src: "{{centos_image_location}}"
+        dest: "{{vm_disk_location}}/{{vms[item].vm_name}}.img"
+      when: vms[item].vm_name not in disks.stdout
+      with_items: "{{ vms | list }}"
+      become: yes
+
+    # List of VMs
+    - name: Get list of VMs
+      virt:
+        command: "list_vms"
+      register: existing_vms
+
+    #Define new vm
+    - name: Define new vm
+      virt:
+        name: "{{vms[item].vm_name}}"
+        command: define
+        xml: "{{ lookup('template', 'templates/vm_template.xml.j2') }}"
+      when: vms[item].vm_name not in existing_vms.list_vms
+      with_items: "{{ vms | list }}"
+      become: yes
+
+    # Create and start new vm
+    - name: Start vm
+      virt:
+        name: "{{vms[item].vm_name}}"
+        command: create
+      with_items: "{{ vms | list }}"
+      become: yes    

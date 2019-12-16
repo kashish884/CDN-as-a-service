@@ -1,0 +1,22 @@
+#!/bin/bash
+
+set -x
+
+# Main Shell Script
+
+
+if [[ ${1:0:1} = '-' ]]; then
+  EXTRA_ARGS="$@"
+  set --
+elif [[ ${1} == 'exec /usr/sbin/init' ]]; then
+  EXTRA_ARGS="${@:2}"
+  set --
+fi
+
+if [[ -z ${1} ]]; then
+  echo "Restarting sshd service..."
+  exec 'systemctl restart sshd'
+
+else
+  exec "$@"
+fi

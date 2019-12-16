@@ -1,0 +1,11 @@
+---
+servers:
+  t10: # Tenant Name
+    server_name: Recv
+    subnet_name: T10sub
+    vpc_name: T10
+    os_type: centos
+    #subnet_dns: t7testd
+    #subnet_zone_name: testdns.t7.edu
+    endpoint_name: test
+    #vpc_dns: T10
